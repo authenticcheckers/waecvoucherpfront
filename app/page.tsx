@@ -1,3 +1,5 @@
+"use client";
+
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import { motion } from "framer-motion";
@@ -15,6 +17,7 @@ export default function Home() {
         >
           Welcome to Waec e-Vouchers Hub
         </motion.h1>
+
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
