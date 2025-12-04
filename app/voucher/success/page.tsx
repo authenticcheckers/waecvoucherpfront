@@ -26,7 +26,7 @@ export default function SuccessPage() {
     const fetchVouchers = async () => {
       try {
         const res = await fetch(
-          `https://your-backend-url.com/api/vouchers?reference=${reference}`
+          `https://waecevoucherp.onrender.com/api/vouchers?reference=${reference}`
         );
         if (!res.ok) throw new Error("Voucher not found");
         const data = await res.json();
