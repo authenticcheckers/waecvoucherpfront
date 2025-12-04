@@ -1,42 +1,45 @@
 "use client";
 import { useState } from "react";
-import Navbar from "../../components/Navbar";
-import Footer from "../../components/Footer";
-import VoucherCard from "../../components/VoucherCard";
-import AnimatedButton from "../../components/AnimatedButton";
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
+import VoucherCard from "../components/VoucherCard";
+import AnimatedButton from "../components/AnimatedButton";
 
-export default function RetrieveVoucher() {
+export default function Retrieve() {
   const [serial, setSerial] = useState("");
-  const [voucher, setVoucher] = useState(null);
+  const [voucher, setVoucher] = useState<any>(null);
   const [error, setError] = useState("");
+  const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
   const handleRetrieve = async () => {
-    const res = await fetch(`http://localhost:5000/api/voucher/retrieve/${serial}`);
-    if(res.ok) {
+    setError("");
+    setVoucher(null);
+    try {
+      const res = await fetch(`${API}/api/voucher/retrieve/${encodeURIComponent(serial)}`);
+      if (!res.ok) {
+        setError("Voucher not found");
+        return;
+      }
       const data = await res.json();
       setVoucher(data);
-      setError("");
-    } else {
-      setVoucher(null);
-      setError("Voucher not found");
+    } catch (err) {
+      console.error(err);
+      setError("Network error");
     }
   };
 
   return (
     <>
       <Navbar />
-      <div className="max-w-md mx-auto mt-20 bg-white p-6 rounded-lg shadow-lg">
-        <h2 className="text-2xl font-bold mb-4">Retrieve Your Voucher</h2>
-        <input
-          type="text"
-          placeholder="Enter Serial Number"
-          value={serial}
-          onChange={(e) => setSerial(e.target.value)}
-          className="border p-2 rounded w-full mb-4"
-        />
-        <AnimatedButton onClick={handleRetrieve}>Retrieve</AnimatedButton>
-        {error && <p className="text-red-500 mt-2">{error}</p>}
-        {voucher && <VoucherCard serial={voucher.serial_number} pin={voucher.pin} />}
+      <div className="h-16" />
+      <div className="container-max max-w-md mx-auto">
+        <div className="glass p-6 rounded-lg shadow mt-8">
+          <h2 className="text-xl font-bold mb-3">Retrieve Voucher</h2>
+          <input value={serial} onChange={(e)=>setSerial(e.target.value)} placeholder="Enter serial number" className="w-full border p-3 rounded mb-3"/>
+          <AnimatedButton onClick={handleRetrieve}>Retrieve</AnimatedButton>
+          {error && <p className="text-red-500 mt-3">{error}</p>}
+          {voucher && <div className="mt-4"><VoucherCard serial={voucher.serial_number} pin={voucher.pin} /></div>}
+        </div>
       </div>
       <Footer />
     </>
