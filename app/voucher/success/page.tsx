@@ -38,30 +38,27 @@ export default function SuccessPage() {
     if (reference) fetchVouchers();
   }, [reference]);
 
-  // Function to download PDF
- const downloadPDF = async (voucher: Voucher) => {
-  const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([400, 200]);
-  const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  // Function to download PDF safely
+  const downloadPDF = async (voucher: Voucher) => {
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([400, 200]);
+    const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  page.drawText("WAEC E-Voucher", { x: 20, y: 150, size: 20, font, color: rgb(0, 0, 0) });
-  page.drawText(`Serial: ${voucher.serial}`, { x: 20, y: 120, size: 16, font });
-  page.drawText(`PIN: ${voucher.pin}`, { x: 20, y: 90, size: 16, font });
+    page.drawText("WAEC E-Voucher", { x: 20, y: 150, size: 20, font, color: rgb(0, 0, 0) });
+    page.drawText(`Serial: ${voucher.serial}`, { x: 20, y: 120, size: 16, font });
+    page.drawText(`PIN: ${voucher.pin}`, { x: 20, y: 90, size: 16, font });
 
-  const pdfBytes = await pdfDoc.save(); // Uint8Array
+    const pdfBytes = await pdfDoc.save();
 
-  // SAFELY create a new ArrayBuffer copy
-  const arrayBufferCopy = pdfBytes.slice().buffer;
+    // Always make a plain ArrayBuffer copy
+    const arrayBufferCopy = pdfBytes.slice().buffer;
 
-  // Create Blob from ArrayBuffer copy (TypeScript happy)
-  const blob = new Blob([arrayBufferCopy], { type: "application/pdf" });
-
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `voucher-${voucher.serial}.pdf`;
-  link.click();
-};
-
+    const blob = new Blob([arrayBufferCopy], { type: "application/pdf" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `voucher-${voucher.serial}.pdf`;
+    link.click();
+  };
 
   return (
     <>
