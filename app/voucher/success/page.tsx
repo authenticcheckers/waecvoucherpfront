@@ -52,15 +52,19 @@ const downloadPDF = async (voucher: Voucher) => {
   // Save PDF as Uint8Array
   const pdfBytes = await pdfDoc.save();
 
-  // Ensure Uint8Array for Blob
-  const uint8Array = pdfBytes instanceof Uint8Array ? pdfBytes : new Uint8Array(pdfBytes);
+  // Convert to ArrayBuffer safely for Blob
+  const arrayBuffer = pdfBytes.buffer.slice(
+    pdfBytes.byteOffset,
+    pdfBytes.byteOffset + pdfBytes.byteLength
+  );
 
-  const blob = new Blob([uint8Array], { type: "application/pdf" });
+  const blob = new Blob([arrayBuffer], { type: "application/pdf" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = `voucher-${voucher.serial}.pdf`;
   link.click();
 };
+
 
   return (
     <>
