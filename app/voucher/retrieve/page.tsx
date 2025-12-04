@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
-import VoucherCard from "../components/VoucherCard";
-import AnimatedButton from "../components/AnimatedButton";
+import Navbar from "@/app/components/Navbar";
+import Footer from "@/app/components/Footer";
+import VoucherCard from "@/app/components/VoucherCard";
+import AnimatedButton from "@/app/components/AnimatedButton";
 
 export default function Retrieve() {
   const [serial, setSerial] = useState("");
