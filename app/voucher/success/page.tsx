@@ -39,35 +39,26 @@ export default function SuccessPage() {
   }, [reference]);
 
   // Function to download PDF
- // Function to download PDF
-const downloadPDF = async (voucher: Voucher) => {
-  const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([400, 200]);
-  const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const downloadPDF = async (voucher: Voucher) => {
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([400, 200]);
+    const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  page.drawText("WAEC E-Voucher", { x: 20, y: 150, size: 20, font, color: rgb(0, 0, 0) });
-  page.drawText(`Serial: ${voucher.serial}`, { x: 20, y: 120, size: 16, font });
-  page.drawText(`PIN: ${voucher.pin}`, { x: 20, y: 90, size: 16, font });
+    page.drawText("WAEC E-Voucher", { x: 20, y: 150, size: 20, font, color: rgb(0, 0, 0) });
+    page.drawText(`Serial: ${voucher.serial}`, { x: 20, y: 120, size: 16, font });
+    page.drawText(`PIN: ${voucher.pin}`, { x: 20, y: 90, size: 16, font });
 
-  const pdfBytes = await pdfDoc.save(); // Uint8Array
+    const pdfBytes = await pdfDoc.save(); // Uint8Array
 
-  // Convert pdfBytes to plain ArrayBuffer safely
-  let arrayBuffer: ArrayBuffer;
-  if (ArrayBuffer.isView(pdfBytes)) {
-    // Any TypedArray (Uint8Array, etc.)
-    arrayBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
-  } else if (pdfBytes instanceof ArrayBuffer) {
-    arrayBuffer = pdfBytes;
-  } else {
-    arrayBuffer = new Uint8Array(pdfBytes).buffer; // fallback
-  }
+    // Convert to ArrayBuffer safely for Blob
+    const arrayBuffer = pdfBytes instanceof Uint8Array ? pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength) : new Uint8Array(pdfBytes).buffer;
 
-  const blob = new Blob([arrayBuffer], { type: "application/pdf" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `voucher-${voucher.serial}.pdf`;
-  link.click();
-};
+    const blob = new Blob([arrayBuffer], { type: "application/pdf" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `voucher-${voucher.serial}.pdf`;
+    link.click();
+  };
 
   return (
     <>
