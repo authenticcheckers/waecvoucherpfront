@@ -38,7 +38,7 @@ export default function SuccessPage() {
     if (reference) fetchVouchers();
   }, [reference]);
 
-  // Function to download PDF safely
+  // Function to download PDF
   const downloadPDF = async (voucher: Voucher) => {
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([400, 200]);
@@ -48,12 +48,12 @@ export default function SuccessPage() {
     page.drawText(`Serial: ${voucher.serial}`, { x: 20, y: 120, size: 16, font });
     page.drawText(`PIN: ${voucher.pin}`, { x: 20, y: 90, size: 16, font });
 
-    const pdfBytes = await pdfDoc.save();
+    const pdfBytes = await pdfDoc.save(); // Uint8Array
 
-    // Always make a plain ArrayBuffer copy
-    const arrayBufferCopy = pdfBytes.slice().buffer;
+    // Convert Uint8Array to plain array for Blob safely
+    const uint8Array = pdfBytes instanceof Uint8Array ? pdfBytes : new Uint8Array(pdfBytes);
 
-    const blob = new Blob([arrayBufferCopy], { type: "application/pdf" });
+    const blob = new Blob([uint8Array], { type: "application/pdf" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `voucher-${voucher.serial}.pdf`;
