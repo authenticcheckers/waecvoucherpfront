@@ -50,13 +50,12 @@ const downloadPDF = async (voucher: Voucher) => {
 
   const pdfBytes = await pdfDoc.save(); // Uint8Array
 
-  // Convert safely to ArrayBuffer, even if it's backed by SharedArrayBuffer
-  const arrayBuffer = pdfBytes.buffer.slice(
-    pdfBytes.byteOffset,
-    pdfBytes.byteOffset + pdfBytes.byteLength
-  );
+  // Force a safe ArrayBuffer copy to avoid SharedArrayBuffer issues
+  const safeArrayBuffer = pdfBytes instanceof Uint8Array
+    ? pdfBytes.slice().buffer // slice() creates a copy
+    : new Uint8Array(pdfBytes).slice().buffer;
 
-  const blob = new Blob([arrayBuffer], { type: "application/pdf" });
+  const blob = new Blob([safeArrayBuffer], { type: "application/pdf" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = `voucher-${voucher.serial}.pdf`;
