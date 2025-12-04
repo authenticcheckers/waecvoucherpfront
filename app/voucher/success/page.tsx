@@ -39,29 +39,31 @@ export default function SuccessPage() {
   }, [reference]);
 
   // Function to download PDF
-  const downloadPDF = async (voucher: Voucher) => {
-    try {
-      const pdfDoc = await PDFDocument.create();
-      const page = pdfDoc.addPage([400, 200]);
-      const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+ // Function to download PDF
+const downloadPDF = async (voucher: Voucher) => {
+  try {
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([400, 200]);
+    const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-      page.drawText("WAEC E-Voucher", { x: 20, y: 150, size: 20, font, color: rgb(0, 0, 0) });
-      page.drawText(`Serial: ${voucher.serial}`, { x: 20, y: 120, size: 16, font });
-      page.drawText(`PIN: ${voucher.pin}`, { x: 20, y: 90, size: 16, font });
+    page.drawText("WAEC E-Voucher", { x: 20, y: 150, size: 20, font, color: rgb(0, 0, 0) });
+    page.drawText(`Serial: ${voucher.serial}`, { x: 20, y: 120, size: 16, font });
+    page.drawText(`PIN: ${voucher.pin}`, { x: 20, y: 90, size: 16, font });
 
-      const pdfBytes = await pdfDoc.save();
+    const pdfBytes = await pdfDoc.save();
 
-      // FIX: Convert Uint8Array to ArrayBuffer for Blob
-      const blob = new Blob([pdfBytes.buffer], { type: "application/pdf" });
+    // Convert Uint8Array safely to ArrayBuffer for Blob
+    const arrayBuffer = pdfBytes instanceof Uint8Array ? pdfBytes.buffer.slice(0) : pdfBytes;
+    const blob = new Blob([arrayBuffer], { type: "application/pdf" });
 
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `voucher-${voucher.serial}.pdf`;
-      link.click();
-    } catch (error) {
-      console.error("Failed to generate PDF:", error);
-    }
-  };
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `voucher-${voucher.serial}.pdf`;
+    link.click();
+  } catch (error) {
+    console.error("Failed to generate PDF:", error);
+  }
+};
 
   return (
     <>
