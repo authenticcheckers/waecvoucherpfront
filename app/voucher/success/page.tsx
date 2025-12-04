@@ -52,11 +52,10 @@ const downloadPDF = async (voucher: Voucher) => {
   // Save PDF as Uint8Array
   const pdfBytes = await pdfDoc.save();
 
-  // Convert to ArrayBuffer safely for Blob
-  const arrayBuffer = pdfBytes.buffer.slice(
-    pdfBytes.byteOffset,
-    pdfBytes.byteOffset + pdfBytes.byteLength
-  );
+  // Convert to a proper ArrayBuffer for Blob
+  const arrayBuffer = pdfBytes instanceof Uint8Array
+    ? pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength)
+    : pdfBytes; // fallback, should rarely happen
 
   const blob = new Blob([arrayBuffer], { type: "application/pdf" });
   const link = document.createElement("a");
