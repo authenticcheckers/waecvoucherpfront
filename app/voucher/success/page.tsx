@@ -51,15 +51,18 @@ const downloadPDF = async (voucher: Voucher) => {
 
   const pdfBytes = await pdfDoc.save(); // Uint8Array
 
-  // Convert to a plain ArrayBuffer
-  const arrayBuffer =
-    pdfBytes instanceof Uint8Array
-      ? pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength)
-      : pdfBytes instanceof ArrayBuffer
-      ? pdfBytes
-      : new Uint8Array(pdfBytes).buffer;
+  // Convert pdfBytes to plain ArrayBuffer safely
+  let arrayBuffer: ArrayBuffer;
+  if (ArrayBuffer.isView(pdfBytes)) {
+    // Any TypedArray (Uint8Array, etc.)
+    arrayBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
+  } else if (pdfBytes instanceof ArrayBuffer) {
+    arrayBuffer = pdfBytes;
+  } else {
+    arrayBuffer = new Uint8Array(pdfBytes).buffer; // fallback
+  }
 
-  const blob = new Blob([arrayBuffer], { type: "application/pdf" }); // ✅ TypeScript safe
+  const blob = new Blob([arrayBuffer], { type: "application/pdf" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = `voucher-${voucher.serial}.pdf`;
