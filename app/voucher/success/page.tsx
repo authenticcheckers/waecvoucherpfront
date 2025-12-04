@@ -50,9 +50,11 @@ export default function SuccessPage() {
 
   const pdfBytes = await pdfDoc.save(); // Uint8Array
 
-  // Convert pdfBytes to plain Uint8Array, then pass to Blob
-  const uint8Array = pdfBytes instanceof Uint8Array ? pdfBytes : new Uint8Array(pdfBytes);
-  const blob = new Blob([uint8Array], { type: "application/pdf" });
+  // SAFELY create a new ArrayBuffer copy
+  const arrayBufferCopy = pdfBytes.slice().buffer;
+
+  // Create Blob from ArrayBuffer copy (TypeScript happy)
+  const blob = new Blob([arrayBufferCopy], { type: "application/pdf" });
 
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
