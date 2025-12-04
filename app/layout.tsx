@@ -2,8 +2,8 @@ import "./globals.css";
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "WAEC E-Voucher Portal",
-  description: "Purchase WAEC BECE & SHS school placement checker vouchers",
+  title: "WAEC e-Vouchers Hub",
+  description: "Purchase WAEC WASSCE, BECE and School Placement vouchers instantly."
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
