@@ -2,14 +2,14 @@ import "./globals.css";
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "WAEC e-Vouchers Hub",
-  description: "Purchase WAEC WASSCE, BECE and School Placement vouchers instantly."
+  title: "VoucherHub Ghana | Official WAEC E-Vouchers",
+  description: "Instant delivery of WASSCE, BECE, and School Placement checkers. Secure Paystack integration.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" className="scroll-smooth">
+      <body className="bg-grid">{children}</body>
     </html>
   );
 }
