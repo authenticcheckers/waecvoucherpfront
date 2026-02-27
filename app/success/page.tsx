@@ -86,10 +86,17 @@ function SuccessContent() {
 
     const verify = async () => {
       try {
-        // ✅ FIXED: Now calls the correct /verify endpoint
+        // Calls the /verify endpoint — backend must be deployed with the updated routes/voucher.js
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/voucher/verify?reference=${encodeURIComponent(reference)}`
         );
+
+        // Guard against HTML error pages (e.g. 404 from old backend)
+        const contentType = res.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+          throw new Error("The server returned an unexpected response. If you were debited, go to the home page and recover your voucher using your MoMo number.");
+        }
+
         const data = await res.json();
 
         if (!res.ok) {
@@ -231,7 +238,7 @@ function SuccessContent() {
                     )}
                   </div>
                   <p className="text-slate-500 font-medium text-sm mb-8">
-                    If you were debited, your voucher is safe. Use the <strong>recovery tool</strong> on the home page with your serial number, or contact us.
+                    If you were debited, your voucher is safe. Go to the <strong>home page</strong> and enter your MoMo number in the recovery tool to retrieve your PIN instantly.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <button onClick={() => router.push('/')}
