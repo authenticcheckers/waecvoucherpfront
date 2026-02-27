@@ -304,7 +304,7 @@ function SuccessContent() {
 
                       {/* PIN — high contrast box */}
                       <div className="bg-amber-400 rounded-2xl p-4">
-                        <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center justify-between mb-3">
                           <p className="text-[10px] font-black text-amber-900 uppercase tracking-widest">Your PIN</p>
                           <button
                             onClick={() => copyToClipboard(v.pin, `pin-${idx}`)}
@@ -315,7 +315,10 @@ function SuccessContent() {
                               : <><Copy size={13} /> Copy</>}
                           </button>
                         </div>
-                        <p className="text-5xl font-black text-slate-900 font-mono tracking-widest leading-tight w-full">
+                        <p
+                          className="font-black text-slate-900 font-mono leading-snug break-all"
+                          style={{ fontSize: v.pin?.length > 12 ? '1.4rem' : '2rem', letterSpacing: '0.05em', wordBreak: 'break-all' }}
+                        >
                           {v.pin}
                         </p>
                       </div>
