@@ -302,7 +302,7 @@ function SuccessContent() {
                       </div>
 
                       <div className="mt-6 pt-6 border-t border-white/10 flex items-center justify-between">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">{voucher.type} Checker · 2024/25</p>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">{voucher.type} Checker </p>
                         <div className="flex">
                           {[...Array(5)].map((_, i) => <Star key={i} size={10} fill="#fbbf24" className="text-amber-400" />)}
                         </div>
