@@ -128,9 +128,6 @@ export default function Home() {
             </div>
             VoucherHub<span className="text-amber-500">GH</span>
           </div>
-          <Link href="/dashboard" className="text-sm font-bold bg-slate-100 px-5 py-2.5 rounded-xl hover:bg-slate-200 transition-all">
-            Admin
-          </Link>
         </div>
       </nav>
 
