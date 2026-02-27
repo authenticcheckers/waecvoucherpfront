@@ -7,7 +7,7 @@ export const metadata = {
 };
 
 // ── Replace with your actual WhatsApp number (no + or spaces) ──
-const WHATSAPP_NUMBER = "233XXXXXXXXX";
+const WHATSAPP_NUMBER = "233546114301";
 const WHATSAPP_MESSAGE = encodeURIComponent(
   "Hello VoucherHub! I need help with my voucher purchase."
 );
