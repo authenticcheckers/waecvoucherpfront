@@ -2,15 +2,48 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, CheckCircle2, MessageCircle, AlertCircle, ArrowLeft, RefreshCw } from "lucide-react";
+import { Download, CheckCircle2, MessageCircle, AlertCircle, ArrowLeft, RefreshCw, ExternalLink, Copy, Star, Share2 } from "lucide-react";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import Link from "next/link";
+
+// Portal links by voucher type
+const PORTAL_INFO: Record<string, { url: string; label: string; desc: string; icon: string; color: string; steps: string[] }> = {
+  WASSCE: {
+    url: "https://www.waecgh.org/",
+    label: "Check WASSCE Results",
+    desc: "Official WAEC Ghana Result Checker",
+    icon: "🎓",
+    color: "from-blue-500 to-blue-700",
+    steps: ["Visit the WAEC portal", "Click 'Result Checker'", "Enter your serial number & PIN", "View your results"],
+  },
+  BECE: {
+    url: "https://www.waecgh.org/",
+    label: "Check BECE Results",
+    desc: "Official WAEC Ghana Result Checker",
+    icon: "📚",
+    color: "from-amber-500 to-orange-600",
+    steps: ["Visit the WAEC portal", "Click 'Result Checker'", "Enter your serial number & PIN", "View your results"],
+  },
+  SCHOOLPLACEMENT: {
+    url: "https://cssps.gov.gh/",
+    label: "Check School Placement",
+    desc: "CSSPS Placement Portal",
+    icon: "🏫",
+    color: "from-violet-500 to-purple-700",
+    steps: ["Visit the CSSPS portal", "Select 'Check Placement'", "Enter your serial number & PIN", "View your school placement"],
+  },
+};
+
+const DEFAULT_PORTAL = PORTAL_INFO.BECE;
 
 export default function SuccessPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-mesh flex items-center justify-center">
-        <RefreshCw className="animate-spin text-amber-500" size={32} />
+        <div className="text-center">
+          <RefreshCw className="animate-spin text-amber-500 mx-auto mb-4" size={36} />
+          <p className="text-slate-500 font-bold">Loading your voucher...</p>
+        </div>
       </div>
     }>
       <SuccessContent />
@@ -18,146 +51,334 @@ export default function SuccessPage() {
   );
 }
 
+function ConfettiPiece({ delay }: { delay: number }) {
+  const colors = ['#fbbf24', '#34d399', '#60a5fa', '#f472b6', '#a78bfa'];
+  const color = colors[Math.floor(Math.random() * colors.length)];
+  const left = `${Math.random() * 100}%`;
+  return (
+    <motion.div
+      initial={{ opacity: 1, y: 0, x: 0, rotate: 0, scale: 1 }}
+      animate={{ opacity: 0, y: -200, x: (Math.random() - 0.5) * 200, rotate: 720, scale: 0 }}
+      transition={{ duration: 2, delay, ease: "easeOut" }}
+      style={{ position: 'absolute', left, top: '60%', width: 12, height: 12, background: color, borderRadius: Math.random() > 0.5 ? '50%' : '2px', pointerEvents: 'none' }}
+    />
+  );
+}
+
 function SuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
-  // Paystack sends both trxref and reference; we need to catch either.
+
   const reference = searchParams.get("reference") || searchParams.get("trxref");
-  
-  const [vouchers, setVouchers] = useState<any[]>([]);
+
+  const [voucher, setVoucher] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     if (!reference) {
+      setError("No payment reference found. If you just paid, please wait and try refreshing.");
       setLoading(false);
-      setError(true);
       return;
     }
 
-    const verifyPayment = async () => {
+    const verify = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/vouchers?reference=${reference}`);
-        if (!res.ok) throw new Error();
+        // ✅ FIXED: Now calls the correct /verify endpoint
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/voucher/verify?reference=${encodeURIComponent(reference)}`
+        );
         const data = await res.json();
-        
-        // Handle both single object or array responses
-        const voucherData = Array.isArray(data) ? data : [data];
-        setVouchers(voucherData);
-      } catch (err) {
-        setError(true);
+
+        if (!res.ok) {
+          throw new Error(data.message || "Verification failed.");
+        }
+
+        setVoucher(data);
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+      } catch (err: any) {
+        setError(err.message || "We couldn't verify your payment.");
       } finally {
         setLoading(false);
       }
     };
 
-    verifyPayment();
+    verify();
   }, [reference]);
 
-  const downloadPDF = async (v: any) => {
+  const copyToClipboard = async (text: string, label: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopied(label);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const downloadPDF = async () => {
+    if (!voucher) return;
     const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([400, 250]);
-    const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const page = pdfDoc.addPage([480, 300]);
+    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    // Background
+    page.drawRectangle({ x: 0, y: 0, width: 480, height: 300, color: rgb(0.97, 0.98, 1) });
+    // Header bar
+    page.drawRectangle({ x: 0, y: 240, width: 480, height: 60, color: rgb(0.06, 0.09, 0.18) });
+    // Accent stripe
+    page.drawRectangle({ x: 0, y: 237, width: 480, height: 4, color: rgb(0.96, 0.62, 0.04) });
+
+    page.drawText("VOUCHERHUB GHANA", { x: 24, y: 266, size: 14, font: boldFont, color: rgb(1, 1, 1) });
+    page.drawText("Official WAEC E-Voucher Receipt", { x: 24, y: 250, size: 9, font, color: rgb(0.6, 0.6, 0.7) });
+
+    const vType = voucher.type || "VOUCHER";
+    page.drawText(`${vType} Results Checker`, { x: 24, y: 210, size: 11, font: boldFont, color: rgb(0.4, 0.4, 0.5) });
     
-    page.drawRectangle({ x: 0, y: 0, width: 400, height: 250, color: rgb(0.97, 0.98, 1) });
-    page.drawText("VOUCHERHUB GHANA", { x: 50, y: 200, size: 14, font, color: rgb(0.1, 0.1, 0.1) });
-    page.drawText("OFFICIAL WAEC E-VOUCHER", { x: 50, y: 180, size: 10, font, color: rgb(0.4, 0.4, 0.4) });
-    
-    page.drawText(`SERIAL: ${v.serial_number || v.serial}`, { x: 50, y: 130, size: 12, font });
-    page.drawText(`PIN: ${v.pin}`, { x: 50, y: 100, size: 22, font, color: rgb(0.85, 0.4, 0) });
-    
+    page.drawText("SERIAL NUMBER", { x: 24, y: 180, size: 8, font: boldFont, color: rgb(0.6, 0.6, 0.6) });
+    page.drawText(voucher.serial_number || "", { x: 24, y: 162, size: 13, font: boldFont, color: rgb(0.1, 0.1, 0.2) });
+
+    page.drawText("YOUR PIN", { x: 24, y: 135, size: 8, font: boldFont, color: rgb(0.6, 0.6, 0.6) });
+    page.drawText(voucher.pin || "", { x: 24, y: 108, size: 36, font: boldFont, color: rgb(0.85, 0.4, 0) });
+
+    if (voucher.purchaser_name) {
+      page.drawText(`Purchased by: ${voucher.purchaser_name}`, { x: 24, y: 60, size: 9, font, color: rgb(0.5, 0.5, 0.6) });
+    }
+    page.drawText("Keep this document safe. Do not share your PIN with anyone.", { x: 24, y: 40, size: 8, font, color: rgb(0.7, 0.3, 0.3) });
+    page.drawText("voucherhubgh.com", { x: 24, y: 24, size: 8, font, color: rgb(0.7, 0.7, 0.8) });
+
     const pdfBytes = await pdfDoc.save();
     const link = document.createElement("a");
     link.href = URL.createObjectURL(new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" }));
-    link.download = `Voucher-${v.serial_number || v.serial}.pdf`;
+    link.download = `VoucherHub-${voucher.serial_number || "Voucher"}.pdf`;
     link.click();
   };
 
+  const portal = voucher?.type ? (PORTAL_INFO[voucher.type] || DEFAULT_PORTAL) : DEFAULT_PORTAL;
+
   return (
-    <main className="min-h-screen bg-mesh flex flex-col items-center justify-center p-6 selection:bg-emerald-100">
-      <motion.div 
-        initial={{ opacity: 0, y: 30, scale: 0.95 }} 
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="max-w-xl w-full bg-white rounded-[3.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15)] overflow-hidden border border-slate-100"
-      >
-        {/* Header Section */}
-        <div className={`p-12 text-center transition-colors duration-700 ${error ? 'bg-red-500' : 'bg-emerald-500'}`}>
-          <motion.div 
-            initial={{ scale: 0, rotate: -45 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-            className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6 backdrop-blur-md"
-          >
-            {error ? <AlertCircle size={40} className="text-white" /> : <CheckCircle2 size={40} className="text-white" />}
-          </motion.div>
-          <h1 className="text-4xl font-[1000] text-white tracking-tight">
-            {loading ? "Verifying..." : error ? "Verification Failed" : "Payment Successful!"}
-          </h1>
-          <p className="text-white/80 font-bold mt-2">
-            {loading ? "Checking payment status with Paystack" : error ? "We couldn't find a voucher for this reference." : "Your voucher details are ready below."}
-          </p>
+    <main className="min-h-screen bg-mesh flex flex-col items-center justify-center p-6 py-16">
+      {/* Confetti */}
+      {showConfetti && (
+        <div className="fixed inset-0 pointer-events-none overflow-hidden z-50">
+          {[...Array(30)].map((_, i) => <ConfettiPiece key={i} delay={i * 0.05} />)}
         </div>
+      )}
 
-        <div className="p-10">
-          <AnimatePresence mode="wait">
-            {loading ? (
-              /* Shimmering Skeleton */
-              <motion.div key="loader" exit={{ opacity: 0 }} className="space-y-6">
-                <div className="h-48 w-full bg-slate-50 rounded-[2.5rem] animate-pulse border-2 border-dashed border-slate-200" />
-                <div className="h-14 w-full bg-slate-100 rounded-2xl animate-pulse" />
-              </motion.div>
-            ) : error ? (
-              <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-6">
-                <p className="text-slate-500 font-medium mb-8">
-                  If you were debited, please wait 2 minutes and check the retrieval tool using your serial number.
-                </p>
-                <button 
-                  onClick={() => router.push('/')}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-slate-900 text-white rounded-2xl font-black hover:bg-slate-800 transition-all"
-                >
-                  <ArrowLeft size={18} /> Back to Home
-                </button>
-              </motion.div>
-            ) : (
-              <motion.div key="content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-                {vouchers.map((v, i) => (
-                  <motion.div 
-                    key={i}
-                    initial={{ x: 50, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: i * 0.1 + 0.3 }}
-                    className="bg-slate-50 border-4 border-dashed border-slate-200 rounded-[3rem] p-8 text-center relative group hover:border-amber-400 transition-all duration-500"
-                  >
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-4 text-[10px] font-[1000] text-slate-400 uppercase tracking-widest">
-                      Digital Voucher Card
-                    </div>
-                    <p className="text-4xl font-black text-amber-600 mb-1 tracking-tighter">PIN: {v.pin}</p>
-                    <p className="text-sm font-bold text-slate-400 mb-8 uppercase tracking-widest">Serial: {v.serial_number || v.serial}</p>
-                    
-                    <button 
-                      onClick={() => downloadPDF(v)}
-                      className="w-full py-4 bg-white border-2 border-slate-200 rounded-2xl font-black text-slate-900 flex items-center justify-center gap-2 hover:border-amber-400 hover:shadow-xl hover:shadow-amber-100 transition-all"
-                    >
-                      <Download size={20} className="text-amber-500" /> Download PDF
+      <div className="w-full max-w-2xl">
+        <motion.div
+          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          className="bg-white rounded-[3rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15)] overflow-hidden border border-slate-100"
+        >
+          {/* ── Header ── */}
+          <div className={`p-10 text-center relative overflow-hidden transition-colors duration-700 ${
+            loading ? 'bg-slate-700' : error ? 'bg-red-500' : 'bg-emerald-500'
+          }`}>
+            <div className="absolute inset-0 opacity-10">
+              {!error && !loading && [...Array(8)].map((_, i) => (
+                <div key={i} className="absolute w-24 h-24 rounded-full border-2 border-white" 
+                  style={{ top: `${Math.random()*100}%`, left: `${Math.random()*100}%`, opacity: 0.3 }} />
+              ))}
+            </div>
+
+            <motion.div
+              initial={{ scale: 0, rotate: -45 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+              className="w-20 h-20 bg-white/25 backdrop-blur-md rounded-full flex items-center justify-center mx-auto mb-5"
+            >
+              {loading ? (
+                <RefreshCw size={36} className="text-white animate-spin" />
+              ) : error ? (
+                <AlertCircle size={36} className="text-white" />
+              ) : (
+                <CheckCircle2 size={36} className="text-white" />
+              )}
+            </motion.div>
+
+            <h1 className="text-4xl font-black text-white tracking-tight">
+              {loading ? "Verifying Payment..." : error ? "Something Went Wrong" : "Payment Successful! 🎉"}
+            </h1>
+            <p className="text-white/80 font-bold mt-2 text-sm">
+              {loading
+                ? "Please wait while we confirm your payment with Paystack"
+                : error
+                ? "We couldn't retrieve your voucher"
+                : `Your ${voucher?.type || ""} voucher is ready — check your results now`}
+            </p>
+          </div>
+
+          {/* ── Body ── */}
+          <div className="p-8 md:p-10">
+            <AnimatePresence mode="wait">
+              {loading && (
+                <motion.div key="loader" exit={{ opacity: 0 }} className="space-y-4">
+                  <div className="h-40 w-full bg-slate-50 rounded-[2rem] shimmer border-2 border-dashed border-slate-200" />
+                  <div className="h-14 w-full bg-slate-100 rounded-2xl shimmer" />
+                  <div className="h-14 w-full bg-slate-100 rounded-2xl shimmer" />
+                </motion.div>
+              )}
+
+              {error && !loading && (
+                <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-4">
+                  <div className="bg-red-50 border border-red-100 rounded-2xl p-6 mb-8">
+                    <p className="text-red-700 font-bold text-sm leading-relaxed">{error}</p>
+                    {reference && (
+                      <p className="text-slate-500 text-xs mt-3 font-medium">
+                        Reference: <code className="bg-red-100 px-2 py-0.5 rounded font-mono">{reference}</code>
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-slate-500 font-medium text-sm mb-8">
+                    If you were debited, your voucher is safe. Use the <strong>recovery tool</strong> on the home page with your serial number, or contact us.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button onClick={() => router.push('/')}
+                      className="inline-flex items-center gap-2 px-8 py-4 bg-slate-900 text-white rounded-2xl font-black hover:bg-slate-800 transition-all">
+                      <ArrowLeft size={16} /> Back to Home
                     </button>
-                  </motion.div>
-                ))}
+                    <button onClick={() => window.location.reload()}
+                      className="inline-flex items-center gap-2 px-8 py-4 bg-slate-100 text-slate-900 rounded-2xl font-black hover:bg-slate-200 transition-all">
+                      <RefreshCw size={16} /> Try Again
+                    </button>
+                  </div>
+                </motion.div>
+              )}
 
-                <div className="pt-6">
-                  <h3 className="text-xl font-black text-slate-900 text-center mb-6">Quick Share</h3>
-                  <button 
-                    onClick={() => window.open(`https://wa.me/?text=I just got my WAEC results checker instantly! Get yours here: ${window.location.origin}`)}
-                    className="w-full bg-[#25D366] text-white py-6 rounded-[2.5rem] font-black flex items-center justify-center gap-3 shadow-xl shadow-green-200 hover:scale-[1.02] active:scale-95 transition-all"
+              {voucher && !loading && !error && (
+                <motion.div key="success" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                  
+                  {/* ── Voucher Card ── */}
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 150, delay: 0.2 }}
+                    className="voucher-shine relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-8 text-white overflow-hidden"
                   >
-                    <MessageCircle size={24} /> Share on WhatsApp
+                    {/* Card shimmer pattern */}
+                    <div className="absolute inset-0 opacity-5">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="absolute w-32 h-32 rounded-full border border-white"
+                          style={{ top: `${i * 25}%`, right: `${i * 10 - 20}%` }} />
+                      ))}
+                    </div>
+
+                    <div className="relative z-10">
+                      <div className="flex justify-between items-start mb-8">
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">VoucherHub Ghana</p>
+                          <p className="text-sm font-bold text-slate-300 mt-0.5">{portal.desc}</p>
+                        </div>
+                        <div className="text-3xl">{portal.icon}</div>
+                      </div>
+
+                      <div className="mb-6">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Serial Number</p>
+                        <div className="flex items-center gap-3">
+                          <p className="text-lg font-black text-slate-200 font-mono">{voucher.serial_number}</p>
+                          <button onClick={() => copyToClipboard(voucher.serial_number, 'serial')}
+                            className="p-1.5 bg-white/10 rounded-lg hover:bg-white/20 transition-colors flex-shrink-0">
+                            {copied === 'serial' ? <CheckCircle2 size={14} className="text-emerald-400" /> : <Copy size={14} className="text-slate-400" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Your PIN</p>
+                        <div className="flex items-center gap-4">
+                          <p className="text-5xl font-black text-amber-400 tracking-tight font-mono">{voucher.pin}</p>
+                          <button onClick={() => copyToClipboard(voucher.pin, 'pin')}
+                            className="p-2 bg-white/10 rounded-xl hover:bg-white/20 transition-colors flex-shrink-0">
+                            {copied === 'pin' ? <CheckCircle2 size={18} className="text-emerald-400" /> : <Copy size={18} className="text-slate-400" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 pt-6 border-t border-white/10 flex items-center justify-between">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">{voucher.type} Checker · 2024/25</p>
+                        <div className="flex">
+                          {[...Array(5)].map((_, i) => <Star key={i} size={10} fill="#fbbf24" className="text-amber-400" />)}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* ── Warning ── */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
+                    <AlertCircle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-xs font-bold text-amber-800">
+                      <strong>Save your PIN now.</strong> Screenshot this page or download the PDF. Do not share your PIN with anyone — VoucherHub staff will never ask for it.
+                    </div>
+                  </div>
+
+                  {/* ── ACTION: Go Check Results ── */}
+                  <div className="bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-[2rem] p-6">
+                    <p className="text-xs font-black text-emerald-700 uppercase tracking-widest mb-1">Step 2 — Check Your Results</p>
+                    <h3 className="text-lg font-black text-slate-900 mb-1">{portal.desc}</h3>
+                    <p className="text-sm text-slate-500 font-medium mb-5">Use your serial number and PIN above on the official portal.</p>
+                    
+                    {/* Steps */}
+                    <div className="grid grid-cols-2 gap-2 mb-5">
+                      {portal.steps.map((step, i) => (
+                        <div key={i} className="flex items-start gap-2 text-xs font-bold text-slate-700">
+                          <div className="w-5 h-5 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-black flex-shrink-0 text-[10px]">
+                            {i + 1}
+                          </div>
+                          {step}
+                        </div>
+                      ))}
+                    </div>
+
+                    <a href={portal.url} target="_blank" rel="noopener noreferrer"
+                      className="w-full flex items-center justify-center gap-2.5 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl transition-all shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.01] active:scale-[0.99]">
+                      {portal.icon} {portal.label}
+                      <ExternalLink size={16} />
+                    </a>
+                  </div>
+
+                  {/* ── Download PDF ── */}
+                  <button onClick={downloadPDF}
+                    className="w-full py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-slate-900 flex items-center justify-center gap-2 hover:border-amber-400 hover:bg-amber-50 hover:shadow-lg hover:shadow-amber-100 transition-all">
+                    <Download size={20} className="text-amber-500" /> Download PDF Receipt
                   </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </motion.div>
+
+                  {/* ── Share ── */}
+                  <div className="pt-2">
+                    <p className="text-center text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Help a friend — share VoucherHub</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`I just got my ${voucher.type} results checker instantly on VoucherHub! 🎓 No queues, no stress — get yours at: ${window.location.origin}`)}`)}
+                        className="bg-[#25D366] text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-green-200"
+                      >
+                        <MessageCircle size={18} /> WhatsApp
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (navigator.share) {
+                            navigator.share({ title: 'VoucherHub Ghana', text: 'Get your WAEC vouchers instantly!', url: window.location.origin });
+                          } else {
+                            copyToClipboard(window.location.origin, 'link');
+                          }
+                        }}
+                        className="bg-slate-100 text-slate-900 py-4 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-slate-200 active:scale-95 transition-all"
+                      >
+                        <Share2 size={18} /> Share Link
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ── Back Link ── */}
+                  <div className="text-center pt-2">
+                    <Link href="/" className="text-sm font-bold text-slate-400 hover:text-slate-700 transition-colors inline-flex items-center gap-1.5">
+                      <ArrowLeft size={14} /> Buy another voucher
+                    </Link>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      </div>
     </main>
   );
 }
