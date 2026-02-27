@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 export const metadata = {
   title: "VoucherHub Ghana | Official WAEC E-Vouchers",
-  description: "Instant delivery of WASSCE, BECE, and School Placement checkers. Secure Paystack integration.",
+  description: "Instant delivery of WASSCE, BECE, and School Placement checkers.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
