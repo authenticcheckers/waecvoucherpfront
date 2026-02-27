@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShieldCheck, Zap, ArrowRight, Search, CheckCircle, Lock,
-  Users, Clock, TrendingUp, Award, ExternalLink, AlertTriangle
+  Clock, Award, ExternalLink, AlertTriangle, Phone, ChevronDown
 } from "lucide-react";
 import Link from 'next/link';
 
@@ -16,15 +16,13 @@ const VOUCHERS = [
     desc: 'West Africa Senior School Certificate',
     color: 'from-blue-500 to-blue-700',
     icon: '🎓',
-    portal: 'https://www.waecgh.org/',
   },
   {
     id: 'bece', name: 'BECE', price: '25',
-    tag: '🔥 High Demand',
+    tag: 'High Demand',
     desc: 'Basic Education Certificate Exam',
     color: 'from-amber-500 to-orange-600',
     icon: '📚',
-    portal: 'https://www.waecgh.org/',
     popular: true,
   },
   {
@@ -33,11 +31,9 @@ const VOUCHERS = [
     desc: 'School Placement & Selection System',
     color: 'from-violet-500 to-purple-700',
     icon: '🏫',
-    portal: 'https://cssps.gov.gh/',
   },
 ];
 
-// Why trust us — factual, verifiable
 const TRUST_POINTS = [
   {
     icon: <ShieldCheck size={22} className="text-emerald-500" />,
@@ -46,24 +42,21 @@ const TRUST_POINTS = [
   },
   {
     icon: <Zap size={22} className="text-amber-500" />,
-    title: "Instant digital delivery",
-    body: "Once your Paystack payment is confirmed, your serial number and PIN are displayed on-screen immediately — no waiting, no SMS delays.",
+    title: "PIN shown on screen instantly",
+    body: "Once your Paystack payment clears, your serial number and PIN appear immediately — no waiting, no SMS that may never arrive.",
   },
   {
     icon: <Lock size={22} className="text-blue-500" />,
     title: "Secured by Paystack",
-    body: "Payments are handled entirely by Paystack, Ghana's most trusted payment processor. We never see or store your card or Momo details.",
+    body: "Payments are handled entirely by Paystack. We never see or store your card or MoMo details.",
   },
   {
     icon: <Clock size={22} className="text-violet-500" />,
-    title: "Voucher recovery anytime",
-    body: "Lost your PIN? Every purchase is stored securely against your serial number. Retrieve it anytime using the tool below.",
+    title: "Recover your PIN anytime",
+    body: "Closed the page too fast? Enter your MoMo number below to retrieve all vouchers purchased with that number — free, always.",
   },
 ];
 
-
-
-// Counter that uses real stock from backend, or falls back gracefully
 function StockBadge({ type, stock }: { type: string; stock: Record<string, number> }) {
   const count = stock[type.toUpperCase()];
   if (count === undefined) return null;
@@ -87,8 +80,8 @@ function StockBadge({ type, stock }: { type: string; stock: Record<string, numbe
 }
 
 export default function Home() {
-  const [serial, setSerial] = useState("");
-  const [retrievedVoucher, setRetrievedVoucher] = useState<any>(null);
+  const [phone, setPhone] = useState("");
+  const [retrievedVouchers, setRetrievedVouchers] = useState<any[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [stock, setStock] = useState<Record<string, number>>({});
@@ -102,23 +95,31 @@ export default function Home() {
   }, []);
 
   const handleRetrieve = async () => {
-    if (!serial.trim()) return;
-    setError(""); setRetrievedVoucher(null); setLoading(true);
+    const cleaned = phone.replace(/\s+/g, '');
+    if (!cleaned) return;
+    setError(""); setRetrievedVouchers([]); setLoading(true);
     try {
-      const res = await fetch(`${API}/api/voucher/retrieve/${encodeURIComponent(serial.trim())}`);
-      if (!res.ok) throw new Error();
-      setRetrievedVoucher(await res.json());
-    } catch {
-      setError("Voucher not found. Double-check your serial number.");
+      const res = await fetch(`${API}/api/voucher/retrieve/phone/${encodeURIComponent(cleaned)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setRetrievedVouchers(Array.isArray(data) ? data : [data]);
+    } catch (err: any) {
+      setError(err.message || "No vouchers found for this number.");
     } finally {
       setLoading(false);
     }
   };
 
+  const PORTALS = [
+    { name: "WASSCE Results", url: "https://ghana.waecdirect.org/", icon: "🎓", label: "ghana.waecdirect.org" },
+    { name: "BECE Results",   url: "https://ghana.waecdirect.org/", icon: "📚", label: "ghana.waecdirect.org" },
+    { name: "SHS Placement",  url: "https://cssps.gov.gh/",         icon: "🏫", label: "cssps.gov.gh" },
+  ];
+
   return (
     <div className="bg-mesh min-h-screen">
 
-      {/* ── NAV ── */}
+      {/* NAV */}
       <nav className="fixed top-0 w-full z-[100] backdrop-blur-xl border-b border-slate-200/50 bg-white/70">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5 font-black text-2xl text-slate-900 tracking-tighter">
@@ -127,18 +128,16 @@ export default function Home() {
             </div>
             VoucherHub<span className="text-amber-500">GH</span>
           </div>
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="text-sm font-bold bg-slate-100 px-5 py-2.5 rounded-xl hover:bg-slate-200 transition-all">
-              Admin
-            </Link>
-          </div>
+          <Link href="/dashboard" className="text-sm font-bold bg-slate-100 px-5 py-2.5 rounded-xl hover:bg-slate-200 transition-all">
+            Admin
+          </Link>
         </div>
       </nav>
 
       <main className="pt-28 pb-24 px-6">
         <div className="max-w-7xl mx-auto">
 
-          {/* ── HERO ── */}
+          {/* HERO */}
           <header className="text-center mb-16">
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-amber-200 shadow-sm text-[11px] font-black uppercase tracking-widest text-amber-700 mb-8"
@@ -170,33 +169,23 @@ export default function Home() {
             </motion.div>
           </header>
 
-          {/* ── VOUCHER CARDS ── */}
+          {/* VOUCHER CARDS */}
           <div id="buy" className="grid md:grid-cols-3 gap-6 mb-20">
             {VOUCHERS.map((v, i) => (
               <motion.div key={v.id} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i + 0.4 }}>
                 <Link href={`/purchase/${v.id}`} className="group block h-full">
                   <div className={`glass card-hover p-8 rounded-[2.5rem] h-full flex flex-col relative overflow-hidden transition-all duration-500 ${v.popular ? 'ring-2 ring-amber-400 ring-offset-2' : ''}`}>
-                    {/* BG orb */}
                     <div className={`absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br ${v.color} opacity-10 rounded-full blur-2xl group-hover:opacity-20 transition-opacity`} />
-
                     {v.popular && (
                       <div className="absolute top-5 right-5 bg-amber-400 text-slate-900 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-wide shadow-md">
                         High Demand
                       </div>
                     )}
-
                     <div className="text-4xl mb-4">{v.icon}</div>
                     <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">{v.tag}</p>
                     <h3 className="text-3xl font-black text-slate-900 mb-2">{v.name}</h3>
                     <p className="text-sm text-slate-500 font-medium mb-5">{v.desc}</p>
-
-                    {/* Real stock badge — only shows when data is loaded */}
-                    {stockLoaded && (
-                      <div className="mb-4">
-                        <StockBadge type={v.id} stock={stock} />
-                      </div>
-                    )}
-
+                    {stockLoaded && <div className="mb-4"><StockBadge type={v.id} stock={stock} /></div>}
                     <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase">Price</p>
@@ -206,7 +195,6 @@ export default function Home() {
                         <ArrowRight size={24} />
                       </div>
                     </div>
-
                     <p className="text-[11px] font-bold text-slate-400 mt-3 flex items-center gap-1">
                       <CheckCircle size={11} className="text-emerald-500" /> PIN shown instantly after payment
                     </p>
@@ -216,7 +204,7 @@ export default function Home() {
             ))}
           </div>
 
-          {/* ── WHY TRUST US ── */}
+          {/* WHY TRUST US */}
           <section className="mb-20">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-black text-slate-900">Why buy here?</h2>
@@ -239,7 +227,7 @@ export default function Home() {
             </div>
           </section>
 
-          {/* ── PORTALS SECTION ── */}
+          {/* OFFICIAL PORTALS */}
           <section className="mb-20 bg-slate-900 rounded-[3rem] p-10 md:p-14 text-white relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-amber-400/10 blur-[80px] rounded-full -mr-10 -mt-10" />
             <div className="relative z-10">
@@ -247,11 +235,7 @@ export default function Home() {
               <h2 className="text-3xl font-black mb-2">Where to use your voucher</h2>
               <p className="text-slate-400 font-medium mb-10 text-sm">After purchase, go directly to the official portal for your exam type.</p>
               <div className="grid md:grid-cols-3 gap-4">
-                {[
-                  { name: "WASSCE Results", url: "https://www.waecgh.org/", icon: "🎓", label: "waecgh.org" },
-                  { name: "BECE Results", url: "https://www.waecgh.org/", icon: "📚", label: "waecgh.org" },
-                  { name: "SHS Placement", url: "https://cssps.gov.gh/", icon: "🏫", label: "cssps.gov.gh" },
-                ].map((p, i) => (
+                {PORTALS.map((p, i) => (
                   <a key={i} href={p.url} target="_blank" rel="noopener noreferrer"
                     className="flex items-center justify-between bg-white/5 hover:bg-white/10 border border-white/10 hover:border-amber-400/40 px-5 py-4 rounded-2xl transition-all group"
                   >
@@ -269,7 +253,7 @@ export default function Home() {
             </div>
           </section>
 
-          {/* ── SCARCITY / URGENCY (real data only) ── */}
+          {/* LIVE STOCK (only renders when real data available) */}
           {stockLoaded && Object.keys(stock).length > 0 && (
             <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="mb-20 bg-amber-50 border-2 border-amber-200 rounded-[2.5rem] p-8 md:p-12"
@@ -285,8 +269,8 @@ export default function Home() {
                     {Object.entries(stock).map(([type, count]) => (
                       <div key={type} className={`px-5 py-3 rounded-2xl border-2 font-black text-sm ${
                         count === 0 ? 'bg-red-50 border-red-200 text-red-700' :
-                        count < 20 ? 'bg-orange-50 border-orange-300 text-orange-700' :
-                        'bg-white border-emerald-200 text-emerald-700'
+                        count < 20  ? 'bg-orange-50 border-orange-300 text-orange-700' :
+                                      'bg-white border-emerald-200 text-emerald-700'
                       }`}>
                         {type}: {count === 0 ? 'Out of stock' : `${count} left`}
                       </div>
@@ -297,51 +281,58 @@ export default function Home() {
             </motion.section>
           )}
 
-          {/* ── RETRIEVAL TOOL ── */}
+          {/* PHONE-BASED RETRIEVAL */}
           <section className="max-w-4xl mx-auto bg-slate-900 rounded-[3rem] p-12 md:p-16 text-white relative overflow-hidden">
             <div className="absolute top-0 right-0 w-72 h-72 bg-violet-500/10 blur-[80px] rounded-full -mr-10 -mt-10" />
             <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
               <div>
                 <div className="inline-flex items-center gap-2 text-xs font-black text-amber-400 bg-amber-400/10 px-3 py-1.5 rounded-full mb-5">
-                  <Search size={12} /> Voucher Recovery
+                  <Phone size={12} /> Voucher Recovery
                 </div>
                 <h2 className="text-3xl font-black mb-4 leading-tight">Already bought? Recover your PIN.</h2>
                 <p className="text-slate-400 font-medium text-sm mb-6 leading-relaxed">
-                  Every purchase is permanently linked to your serial number. If you lost your PIN or closed the page too fast, enter your serial number below to get it back instantly.
+                  Enter the MoMo number you used during purchase. We'll pull up every voucher linked to that number — PIN and serial — instantly.
                 </p>
                 <div className="flex flex-col gap-2.5 text-sm font-bold text-slate-400">
-                  <div className="flex items-center gap-2"><CheckCircle size={14} className="text-emerald-400" /> Works 24/7</div>
-                  <div className="flex items-center gap-2"><Lock size={14} className="text-blue-400" /> No charge to retrieve</div>
+                  <div className="flex items-center gap-2"><CheckCircle size={14} className="text-emerald-400" /> Works 24/7, no charge</div>
+                  <div className="flex items-center gap-2"><Lock size={14} className="text-blue-400" /> Only shows your own vouchers</div>
                 </div>
               </div>
 
               <div className="glass bg-white/5 border-white/10 p-2 rounded-[2rem]">
                 <div className="flex flex-col gap-3 p-4">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Your Serial Number</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">MoMo Phone Number Used at Purchase</label>
                   <input
-                    value={serial} onChange={e => setSerial(e.target.value)}
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleRetrieve()}
-                    placeholder="e.g. GH-WAEC-123456"
+                    placeholder="024 XXXXXXX"
+                    type="tel"
                     className="bg-white/10 text-white px-5 py-4 rounded-2xl outline-none font-bold placeholder:text-slate-600 border border-white/10 focus:border-amber-400/50 transition-colors"
                   />
-                  <button onClick={handleRetrieve} disabled={loading || !serial.trim()}
+                  <button onClick={handleRetrieve} disabled={loading || !phone.trim()}
                     className="w-full btn-premium py-4 rounded-2xl text-slate-900 font-black flex items-center justify-center gap-2 disabled:opacity-50">
-                    {loading ? "Searching..." : "Retrieve My PIN"}
+                    {loading ? "Searching..." : "Retrieve My Vouchers"}
                     <Search size={18} />
                   </button>
                 </div>
+
                 {error && <p className="px-6 pb-4 text-red-400 text-center font-bold text-sm">{error}</p>}
+
                 <AnimatePresence>
-                  {retrievedVoucher && (
+                  {retrievedVouchers.length > 0 && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                      className="m-2 p-6 bg-white rounded-[1.5rem] text-slate-900"
+                      className="m-2 space-y-2"
                     >
-                      <p className="text-[10px] font-black text-emerald-600 uppercase mb-2 flex items-center gap-1">
-                        <CheckCircle size={12} /> Voucher Found
-                      </p>
-                      <p className="font-black text-2xl text-amber-600 tracking-tight">PIN: {retrievedVoucher.pin}</p>
-                      <p className="text-xs font-bold text-slate-400 mt-1">Serial: {retrievedVoucher.serial_number}</p>
-                      <p className="text-xs font-bold text-slate-400">Type: {retrievedVoucher.type}</p>
+                      {retrievedVouchers.map((v, i) => (
+                        <div key={i} className="p-5 bg-white rounded-[1.5rem] text-slate-900">
+                          <p className="text-[10px] font-black text-emerald-600 uppercase mb-1 flex items-center gap-1">
+                            <CheckCircle size={11} /> {v.type} Voucher
+                          </p>
+                          <p className="font-black text-2xl text-amber-600 tracking-tight">PIN: {v.pin}</p>
+                          <p className="text-xs font-bold text-slate-400 mt-0.5">Serial: {v.serial_number}</p>
+                        </div>
+                      ))}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -352,8 +343,8 @@ export default function Home() {
         </div>
       </main>
 
-      {/* ── FOOTER ── */}
-      <footer className="border-t border-slate-200 bg-white/60 backdrop-blur-sm py-8 px-6">
+      {/* FOOTER */}
+      <footer className="border-t border-slate-200 bg-white/60 backdrop-blur-sm py-8 px-6 mt-12">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 font-black text-xl text-slate-900 tracking-tighter">
             <div className="w-8 h-8 bg-slate-900 rounded-xl flex items-center justify-center">
