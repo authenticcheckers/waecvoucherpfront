@@ -304,18 +304,20 @@ function SuccessContent() {
 
                       {/* PIN — high contrast box */}
                       <div className="bg-amber-400 rounded-2xl p-4">
-                        <p className="text-[10px] font-black text-amber-900 uppercase tracking-widest mb-2">Your PIN</p>
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-4xl font-black text-slate-900 font-mono tracking-wider">{v.pin}</p>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-[10px] font-black text-amber-900 uppercase tracking-widest">Your PIN</p>
                           <button
                             onClick={() => copyToClipboard(v.pin, `pin-${idx}`)}
-                            className="flex-shrink-0 w-10 h-10 bg-black/10 rounded-xl flex items-center justify-center hover:bg-black/20 active:scale-95 transition-all"
+                            className="flex-shrink-0 flex items-center gap-1.5 bg-black/10 hover:bg-black/20 active:scale-95 transition-all px-3 py-1.5 rounded-xl text-[11px] font-black text-slate-900"
                           >
                             {copied === `pin-${idx}`
-                              ? <CheckCircle2 size={18} className="text-slate-900" />
-                              : <Copy size={18} className="text-slate-900" />}
+                              ? <><CheckCircle2 size={13} /> Copied!</>
+                              : <><Copy size={13} /> Copy</>}
                           </button>
                         </div>
+                        <p className="text-5xl font-black text-slate-900 font-mono tracking-widest leading-tight w-full">
+                          {v.pin}
+                        </p>
                       </div>
 
                       <div className="mt-4 flex items-center justify-between">
