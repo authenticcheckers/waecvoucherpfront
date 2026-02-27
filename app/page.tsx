@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { ShieldCheck, Zap, ArrowRight, Search, CheckCircle, Smartphone, Lock, HelpCircle } from "lucide-react";
 import Link from 'next/link';
 
-const API = process.env.NEXT_PUBLIC_API_URL || "https://waecevoucherp.onrender.com";
+const API = process.env.NEXT_PUBLIC_API_URL || "https://waecevoucaherp.onrender.com";
 
 export default function Home() {
   const [serial, setSerial] = useState("");
