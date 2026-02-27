@@ -103,7 +103,11 @@ function SuccessContent() {
           throw new Error(data.message || "Verification failed.");
         }
 
-        setVoucher(data);
+        // Normalise: new API returns { vouchers: [...] }, old returned a single object
+        const voucherList = data.vouchers
+          ? data.vouchers.map((v: any) => ({ ...v, type: data.type }))
+          : [{ serial_number: data.serial_number, pin: data.pin, type: data.type }];
+        setVoucher({ ...data, vouchers: voucherList, quantity: voucherList.length });
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3000);
       } catch (err: any) {
@@ -125,39 +129,33 @@ function SuccessContent() {
   const downloadPDF = async () => {
     if (!voucher) return;
     const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([480, 300]);
     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
-    // Background
-    page.drawRectangle({ x: 0, y: 0, width: 480, height: 300, color: rgb(0.97, 0.98, 1) });
-    // Header bar
-    page.drawRectangle({ x: 0, y: 240, width: 480, height: 60, color: rgb(0.06, 0.09, 0.18) });
-    // Accent stripe
-    page.drawRectangle({ x: 0, y: 237, width: 480, height: 4, color: rgb(0.96, 0.62, 0.04) });
-
-    page.drawText("VOUCHERHUB GHANA", { x: 24, y: 266, size: 14, font: boldFont, color: rgb(1, 1, 1) });
-    page.drawText("Official WAEC E-Voucher Receipt", { x: 24, y: 250, size: 9, font, color: rgb(0.6, 0.6, 0.7) });
-
     const vType = voucher.type || "VOUCHER";
-    page.drawText(`${vType} Results Checker`, { x: 24, y: 210, size: 11, font: boldFont, color: rgb(0.4, 0.4, 0.5) });
-    
-    page.drawText("SERIAL NUMBER", { x: 24, y: 180, size: 8, font: boldFont, color: rgb(0.6, 0.6, 0.6) });
-    page.drawText(voucher.serial_number || "", { x: 24, y: 162, size: 13, font: boldFont, color: rgb(0.1, 0.1, 0.2) });
 
-    page.drawText("YOUR PIN", { x: 24, y: 135, size: 8, font: boldFont, color: rgb(0.6, 0.6, 0.6) });
-    page.drawText(voucher.pin || "", { x: 24, y: 108, size: 36, font: boldFont, color: rgb(0.85, 0.4, 0) });
-
-    if (voucher.purchaser_name) {
-      page.drawText(`Purchased by: ${voucher.purchaser_name}`, { x: 24, y: 60, size: 9, font, color: rgb(0.5, 0.5, 0.6) });
+    for (const v of voucher.vouchers) {
+      const page = pdfDoc.addPage([480, 300]);
+      page.drawRectangle({ x: 0, y: 0, width: 480, height: 300, color: rgb(0.97, 0.98, 1) });
+      page.drawRectangle({ x: 0, y: 240, width: 480, height: 60, color: rgb(0.06, 0.09, 0.18) });
+      page.drawRectangle({ x: 0, y: 237, width: 480, height: 4, color: rgb(0.96, 0.62, 0.04) });
+      page.drawText("VOUCHERHUB GHANA", { x: 24, y: 266, size: 14, font: boldFont, color: rgb(1, 1, 1) });
+      page.drawText("Official WAEC E-Voucher Receipt", { x: 24, y: 250, size: 9, font, color: rgb(0.6, 0.6, 0.7) });
+      page.drawText(`${vType} Results Checker`, { x: 24, y: 210, size: 11, font: boldFont, color: rgb(0.4, 0.4, 0.5) });
+      page.drawText("SERIAL NUMBER", { x: 24, y: 180, size: 8, font: boldFont, color: rgb(0.6, 0.6, 0.6) });
+      page.drawText(v.serial_number || "", { x: 24, y: 162, size: 13, font: boldFont, color: rgb(0.1, 0.1, 0.2) });
+      page.drawText("YOUR PIN", { x: 24, y: 135, size: 8, font: boldFont, color: rgb(0.6, 0.6, 0.6) });
+      page.drawText(v.pin || "", { x: 24, y: 108, size: 36, font: boldFont, color: rgb(0.85, 0.4, 0) });
+      if (voucher.purchaser_name) {
+        page.drawText(`Purchased by: ${voucher.purchaser_name}`, { x: 24, y: 60, size: 9, font, color: rgb(0.5, 0.5, 0.6) });
+      }
+      page.drawText("Keep this document safe. Do not share your PIN with anyone.", { x: 24, y: 40, size: 8, font, color: rgb(0.7, 0.3, 0.3) });
+      page.drawText("voucherhubgh.com", { x: 24, y: 24, size: 8, font, color: rgb(0.7, 0.7, 0.8) });
     }
-    page.drawText("Keep this document safe. Do not share your PIN with anyone.", { x: 24, y: 40, size: 8, font, color: rgb(0.7, 0.3, 0.3) });
-    page.drawText("voucherhubgh.com", { x: 24, y: 24, size: 8, font, color: rgb(0.7, 0.7, 0.8) });
 
     const pdfBytes = await pdfDoc.save();
     const link = document.createElement("a");
     link.href = URL.createObjectURL(new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" }));
-    link.download = `VoucherHub-${voucher.serial_number || "Voucher"}.pdf`;
+    link.download = `VoucherHub-${vType}-${voucher.vouchers.length}vouchers.pdf`;
     link.click();
   };
 
@@ -256,59 +254,78 @@ function SuccessContent() {
               {voucher && !loading && !error && (
                 <motion.div key="success" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
                   
-                  {/* ── Voucher Card ── */}
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: "spring", stiffness: 150, delay: 0.2 }}
-                    className="voucher-shine relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-8 text-white overflow-hidden"
-                  >
-                    {/* Card shimmer pattern */}
-                    <div className="absolute inset-0 opacity-5">
-                      {[...Array(5)].map((_, i) => (
-                        <div key={i} className="absolute w-32 h-32 rounded-full border border-white"
-                          style={{ top: `${i * 25}%`, right: `${i * 10 - 20}%` }} />
-                      ))}
+                  {/* ── Voucher Card(s) ── */}
+                  {voucher.quantity > 1 && (
+                    <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+                      <CheckCircle2 size={16} className="text-amber-600 flex-shrink-0" />
+                      <p className="text-sm font-black text-amber-800">
+                        {voucher.quantity} vouchers purchased — all PINs are below.
+                      </p>
                     </div>
-
-                    <div className="relative z-10">
-                      <div className="flex justify-between items-start mb-8">
+                  )}
+                  {voucher.vouchers.map((v: any, idx: number) => (
+                    <motion.div key={idx}
+                      initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 150, delay: 0.2 + idx * 0.08 }}
+                      className="relative bg-slate-900 rounded-3xl p-5 sm:p-7 text-white"
+                      style={{ WebkitTransform: 'translateZ(0)' }}
+                    >
+                      {/* header row */}
+                      <div className="flex justify-between items-center mb-5">
                         <div>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">VoucherHub Ghana</p>
-                          <p className="text-sm font-bold text-slate-300 mt-0.5">{portal.desc}</p>
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">VoucherHub Ghana</p>
+                          <p className="text-xs font-bold text-slate-400 mt-0.5">{portal.desc}</p>
                         </div>
-                        <div className="text-3xl">{portal.icon}</div>
+                        <div className="flex items-center gap-2">
+                          {voucher.quantity > 1 && (
+                            <span className="text-[10px] font-black bg-white/10 px-2.5 py-1 rounded-full text-slate-400">
+                              {idx + 1} of {voucher.quantity}
+                            </span>
+                          )}
+                          <span className="text-2xl">{portal.icon}</span>
+                        </div>
                       </div>
 
-                      <div className="mb-6">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Serial Number</p>
-                        <div className="flex items-center gap-3">
-                          <p className="text-lg font-black text-slate-200 font-mono">{voucher.serial_number}</p>
-                          <button onClick={() => copyToClipboard(voucher.serial_number, 'serial')}
-                            className="p-1.5 bg-white/10 rounded-lg hover:bg-white/20 transition-colors flex-shrink-0">
-                            {copied === 'serial' ? <CheckCircle2 size={14} className="text-emerald-400" /> : <Copy size={14} className="text-slate-400" />}
+                      {/* Serial */}
+                      <div className="bg-white/10 rounded-2xl p-4 mb-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Serial Number</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-base font-black text-white font-mono break-all leading-snug">{v.serial_number}</p>
+                          <button
+                            onClick={() => copyToClipboard(v.serial_number, `serial-${idx}`)}
+                            className="flex-shrink-0 w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all"
+                          >
+                            {copied === `serial-${idx}`
+                              ? <CheckCircle2 size={15} className="text-emerald-400" />
+                              : <Copy size={15} className="text-slate-300" />}
                           </button>
                         </div>
                       </div>
 
-                      <div>
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Your PIN</p>
-                        <div className="flex items-center gap-4">
-                          <p className="text-5xl font-black text-amber-400 tracking-tight font-mono">{voucher.pin}</p>
-                          <button onClick={() => copyToClipboard(voucher.pin, 'pin')}
-                            className="p-2 bg-white/10 rounded-xl hover:bg-white/20 transition-colors flex-shrink-0">
-                            {copied === 'pin' ? <CheckCircle2 size={18} className="text-emerald-400" /> : <Copy size={18} className="text-slate-400" />}
+                      {/* PIN — high contrast box */}
+                      <div className="bg-amber-400 rounded-2xl p-4">
+                        <p className="text-[10px] font-black text-amber-900 uppercase tracking-widest mb-2">Your PIN</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-4xl font-black text-slate-900 font-mono tracking-wider">{v.pin}</p>
+                          <button
+                            onClick={() => copyToClipboard(v.pin, `pin-${idx}`)}
+                            className="flex-shrink-0 w-10 h-10 bg-black/10 rounded-xl flex items-center justify-center hover:bg-black/20 active:scale-95 transition-all"
+                          >
+                            {copied === `pin-${idx}`
+                              ? <CheckCircle2 size={18} className="text-slate-900" />
+                              : <Copy size={18} className="text-slate-900" />}
                           </button>
                         </div>
                       </div>
 
-                      <div className="mt-6 pt-6 border-t border-white/10 flex items-center justify-between">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">{voucher.type} Checker </p>
-                        <div className="flex">
+                      <div className="mt-4 flex items-center justify-between">
+                        <p className="text-[10px] font-black text-slate-600 uppercase tracking-wider">{voucher.type} Checker</p>
+                        <div className="flex gap-0.5">
                           {[...Array(5)].map((_, i) => <Star key={i} size={10} fill="#fbbf24" className="text-amber-400" />)}
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
+                    </motion.div>
+                  ))}
 
                   {/* ── Warning ── */}
                   <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
